@@ -69,6 +69,33 @@
             border-color: #1e3c72;
         }
 
+        .form-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            background-color: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .form-group select option {
+            padding: 0.5rem;
+        }
+
+        .account-type-info {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
         .btn {
             width: 100%;
             padding: 0.8rem;
@@ -114,33 +141,6 @@
             margin-bottom: 1rem;
             display: none;
         }
-
-        .login-type-switch {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-            gap: 1rem;
-        }
-
-        .login-type-btn {
-            padding: 0.5rem 1.5rem;
-            border: 2px solid #1e3c72;
-            border-radius: 5px;
-            background: white;
-            color: #1e3c72;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .login-type-btn.active {
-            background: #1e3c72;
-            color: white;
-        }
-
-        .login-type-btn:hover {
-            background: #2a5298;
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -148,11 +148,6 @@
         <div class="logo">
             <img src="https://cdn-icons-png.flaticon.com/512/2232/2232688.png" alt="Logo Thư viện">
             <h1>Thư viện Sách</h1>
-        </div>
-
-        <div class="login-type-switch">
-            <button id="userLoginBtn" class="login-type-btn active" onclick="switchLoginType('user')">Người dùng</button>
-            <button id="adminLoginBtn" class="login-type-btn" onclick="switchLoginType('admin')">Quản trị viên</button>
         </div>
 
         <div id="loginForm">
@@ -200,6 +195,17 @@
                 <label for="regConfirmPassword">Xác nhận mật khẩu</label>
                 <input type="password" id="regConfirmPassword" placeholder="Nhập lại mật khẩu">
             </div>
+
+            <div class="form-group">
+                <label for="regAccountType">Loại tài khoản</label>
+                <select id="regAccountType" class="form-group input">
+                    <option value="user">Người dùng thường</option>
+                    <option value="admin">Quản trị viên</option>
+                </select>
+                <div class="account-type-info">
+                    Chọn "Quản trị viên" nếu bạn muốn quản lý hệ thống
+                </div>
+            </div>
             
             <button class="btn" onclick="register()">Đăng ký</button>
             
@@ -210,15 +216,6 @@
     </div>
 
     <script>
-        let currentLoginType = 'user';
-
-        // Dữ liệu tạm thời cho tài khoản admin
-        const tempAdminData = {
-            username: 'admin',
-            password: 'admin123',
-            type: 'admin'
-        };
-
         // Hàm kết nối đến cơ sở dữ liệu
         async function connectToDatabase() {
             try {
@@ -236,19 +233,8 @@
         }
 
         // Hàm kiểm tra đăng nhập
-        async function checkLogin(username, password, type) {
+        async function checkLogin(username, password) {
             try {
-                // Kiểm tra với dữ liệu tạm thời trước
-                if (type === 'admin' && 
-                    username === tempAdminData.username && 
-                    password === tempAdminData.password) {
-                    return {
-                        success: true,
-                        message: 'Đăng nhập thành công',
-                        token: 'temp_admin_token'
-                    };
-                }
-
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
@@ -256,8 +242,7 @@
                     },
                     body: JSON.stringify({
                         username: username,
-                        password: password,
-                        type: type
+                        password: password
                     })
                 });
                 return await response.json();
@@ -268,7 +253,7 @@
         }
 
         // Hàm đăng ký tài khoản mới
-        async function registerUser(username, email, password) {
+        async function registerUser(username, email, password, accountType) {
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
@@ -278,27 +263,14 @@
                     body: JSON.stringify({
                         username: username,
                         email: email,
-                        password: password
+                        password: password,
+                        type: accountType
                     })
                 });
                 return await response.json();
             } catch (error) {
                 console.error('Lỗi đăng ký:', error);
                 return null;
-            }
-        }
-
-        function switchLoginType(type) {
-            currentLoginType = type;
-            const userBtn = document.getElementById('userLoginBtn');
-            const adminBtn = document.getElementById('adminLoginBtn');
-            
-            if (type === 'user') {
-                userBtn.classList.add('active');
-                adminBtn.classList.remove('active');
-            } else {
-                adminBtn.classList.add('active');
-                userBtn.classList.remove('active');
             }
         }
 
@@ -335,7 +307,7 @@
             }
 
             // Kiểm tra đăng nhập
-            const loginResult = await checkLogin(username, password, currentLoginType);
+            const loginResult = await checkLogin(username, password);
             if (!loginResult || !loginResult.success) {
                 errorElement.textContent = loginResult?.message || 'Đăng nhập thất bại';
                 errorElement.style.display = 'block';
@@ -344,24 +316,28 @@
             }
 
             // Đăng nhập thành công
-            successElement.textContent = `Đăng nhập thành công với tư cách ${currentLoginType === 'user' ? 'người dùng' : 'quản trị viên'}!`;
+            successElement.textContent = 'Đăng nhập thành công!';
             successElement.style.display = 'block';
             errorElement.style.display = 'none';
 
             // Lưu thông tin đăng nhập vào localStorage
-            localStorage.setItem('userType', currentLoginType);
-            localStorage.setItem('username', username);
+            localStorage.setItem('user', JSON.stringify(loginResult.user));
             localStorage.setItem('token', loginResult.token);
 
-            // Chuyển hướng đến trang chính
+            // Chuyển hướng đến trang chính dựa trên loại tài khoản
             setTimeout(() => {
-                window.location.href = currentLoginType === 'user' ? '/user/dashboard.html' : '/admin/dashboard.html';
+                if (loginResult.user.type === 'admin') {
+                    window.location.href = '/admin/dashboard.html';
+                } else {
+                    window.location.href = '/user/dashboard.html';
+                }
             }, 1500);
         }
 
         async function register() {
             const username = document.getElementById('regUsername').value;
             const email = document.getElementById('regEmail').value;
+            const accountType = document.getElementById('regAccountType').value;
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
             const errorElement = document.getElementById('registerError');
@@ -391,7 +367,7 @@
             }
 
             // Đăng ký tài khoản mới
-            const registerResult = await registerUser(username, email, password);
+            const registerResult = await registerUser(username, email, password, accountType);
             if (!registerResult || !registerResult.success) {
                 errorElement.textContent = registerResult?.message || 'Đăng ký thất bại';
                 errorElement.style.display = 'block';
