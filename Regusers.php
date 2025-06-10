@@ -3,16 +3,31 @@
 	#fetch data from database
 	$connection = mysqli_connect("localhost","root","");
 	$db = mysqli_select_db($connection,"lms");
-	$book_name = "";
-	$author = "";
-	$book_no = "";
-	$student_name = "";
-	$query = "select issued_books.book_name,issued_books.book_author,users.name,issued_books.issue_date,issued_books.status,issued_books.return_date from issued_books left join users on issued_books.student_id = users.id where issued_books.status = 1";
+	$name = "";
+	$email = "";
+	$password = "";
+	$mobile = "";
+	$address = "";
+	
+	// Thêm chức năng tìm kiếm
+	$query_string = isset($_GET['query']) ? trim($_GET['query']) : '';
+	if($query_string != '') {
+		$query_string_escaped = mysqli_real_escape_string($connection, $query_string);
+		$query = "SELECT * FROM users WHERE (name LIKE '%$query_string_escaped%' OR email LIKE '%$query_string_escaped%' OR mobile LIKE '%$query_string_escaped%') ORDER BY name ASC";
+	} else {
+		$query = "SELECT * FROM users ORDER BY name ASC";
+	}
+	
+	// Tính tổng số bạn đọc
+	$total_users_query = "SELECT COUNT(*) as total_users FROM users";
+	$total_result = mysqli_query($connection, $total_users_query);
+	$total_data = mysqli_fetch_assoc($total_result);
+	$total_users = $total_data['total_users'];
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Sách đã mượn | LMS</title>
+	<title>Danh sách bạn đọc - LMS</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	
@@ -34,15 +49,6 @@
 			margin: 20px 0;
 		}
 		
-		.page-header {
-			background: linear-gradient(45deg, #ffc107, #e0a800);
-			color: white;
-			padding: 30px;
-			border-radius: 8px;
-			text-align: center;
-			margin-bottom: 30px;
-		}
-		
 		.table-responsive {
 			box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 			border-radius: 8px;
@@ -54,48 +60,62 @@
 		}
 		
 		.table thead th {
-			background: linear-gradient(45deg, #ffc107, #e0a800);
-			color: #212529;
+			background: linear-gradient(45deg, #28a745, #20c997);
+			color: white;
 			border: none;
 			font-weight: 500;
 			text-align: center;
 			vertical-align: middle;
-			padding: 15px 8px;
-			font-size: 0.9em;
+			padding: 15px 10px;
 		}
 		
 		.table tbody td {
 			text-align: center;
 			vertical-align: middle;
-			padding: 12px 8px;
+			padding: 12px 10px;
 			border-bottom: 1px solid #dee2e6;
-			font-size: 0.9em;
 		}
 		
 		.table tbody tr:hover {
 			background-color: #f8f9fa;
 		}
 		
-		.status-badge {
-			padding: 5px 10px;
-			border-radius: 15px;
-			font-size: 0.8em;
-			font-weight: 500;
-			white-space: nowrap;
-		}
-		
-		.status-issued {
-			background-color: #ffc107;
-			color: #212529;
-		}
-		
-		.status-returned {
-			background-color: #28a745;
-			color: white;
-		}
-		
 		.navbar-light {
 			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		}
+		
+		.search-form {
+			background: #f8f9fa;
+			border: 1px solid #dee2e6;
+			border-radius: 8px;
+			padding: 1rem;
+		}
+		
+		.stats-info {
+			background: #e8f5e8;
+			border: 1px solid #28a745;
+			border-radius: 8px;
+			padding: 1rem;
+			margin-bottom: 1rem;
+		}
+		
+		.user-status-badge {
+			padding: 0.25rem 0.5rem;
+			border-radius: 0.375rem;
+			font-size: 0.875rem;
+			font-weight: 500;
+		}
+		
+		.status-active {
+			background-color: #d4edda;
+			color: #155724;
+			border: 1px solid #c3e6cb;
+		}
+		
+		.status-inactive {
+			background-color: #f8d7da;
+			color: #721c24;
+			border: 1px solid #f5c6cb;
 		}
 		
 		/* Custom dropdown styles */
@@ -147,52 +167,30 @@
 			border-top: 1px solid #e9ecef;
 		}
 		
-		.back-btn {
-			margin-bottom: 20px;
+		.user-info-cell {
+			text-align: left !important;
 		}
 		
-		.empty-state {
-			text-align: center;
-			padding: 50px;
+		.user-name {
+			font-weight: bold;
+			color: #007bff;
+			margin-bottom: 2px;
+		}
+		
+		.user-email {
 			color: #6c757d;
+			font-size: 0.875rem;
 		}
 		
-		.empty-state i {
-			font-size: 3em;
-			margin-bottom: 20px;
-			color: #dee2e6;
+		.contact-info {
+			color: #495057;
 		}
 		
-		.alert-info {
-			background: linear-gradient(45deg, #fff3cd, #ffeaa7);
-			border: 1px solid #ffc107;
-			color: #856404;
-		}
-		
-		.btn-primary {
-			background: linear-gradient(45deg, #ffc107, #e0a800);
-			border: none;
-			color: #212529;
-			font-weight: 500;
-		}
-		
-		.btn-primary:hover {
-			background: linear-gradient(45deg, #e0a800, #d39e00);
-			color: #212529;
-		}
-		
-		/* Responsive table adjustments */
-		@media (max-width: 768px) {
-			.table thead th,
-			.table tbody td {
-				padding: 8px 4px;
-				font-size: 0.8em;
-			}
-			
-			.status-badge {
-				font-size: 0.7em;
-				padding: 3px 6px;
-			}
+		.address-info {
+			color: #6c757d;
+			font-size: 0.875rem;
+			max-width: 200px;
+			word-wrap: break-word;
 		}
 	</style>
 </head>
@@ -262,82 +260,104 @@
 
 	<div class="container-fluid">
 		<div class="content-section">
-			<div class="table-responsive">
-				<?php
-					$query_run = mysqli_query($connection,$query);
-					$row_count = mysqli_num_rows($query_run);
-					
-					if($row_count > 0) {
-				?>
-				<table class="table table-hover">
-					<thead>
-						<tr>
-							<th><i class="fas fa-book"></i> Tên sách</th>
-							<th><i class="fas fa-user-edit"></i> Tác giả</th>
-							<th><i class="fas fa-user"></i> Người mượn</th>
-							<th><i class="fas fa-calendar-alt"></i> Ngày mượn</th>
-							<th><i class="fas fa-calendar-check"></i> Ngày trả</th>
-							<th><i class="fas fa-info-circle"></i> Trạng thái</th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php
-							mysqli_data_seek($query_run, 0); // Reset pointer
-							while ($row = mysqli_fetch_assoc($query_run)){
-								$status_text = ($row['status'] == 1) ? 'Đang mượn' : 'Đã trả';
-								$status_class = ($row['status'] == 1) ? 'status-issued' : 'status-returned';
-								
-								// Format dates
-								$issue_date = date('d/m/Y', strtotime($row['issue_date']));
-								
-								// Handle return date - check if it's a valid date and not 0000-00-00
-								$return_date = '';
-								if ($row['return_date'] && $row['return_date'] != '0000-00-00') {
-									$return_date = date('d/m/Y', strtotime($row['return_date']));
-								} else {
-									$return_date = '<span class="text-muted"><i>Chưa trả</i></span>';
-								}
-								?>
-								<tr>
-									<td><strong><?php echo htmlspecialchars($row['book_name']);?></strong></td>
-									<td><?php echo htmlspecialchars($row['book_author']);?></td>
-									<td><?php echo htmlspecialchars($row['name']);?></td>
-									<td><?php echo $issue_date;?></td>
-									<td><?php echo $return_date;?></td>
-									<td>
-										<span class="status-badge <?php echo $status_class;?>">
-											<?php echo $status_text;?>
-										</span>
-									</td>
-								</tr>
-							<?php
-							}
-						?>	
-					</tbody>
-				</table>
-				<?php
-					} else {
-				?>
-				<div class="empty-state">
-					<i class="fas fa-book-open"></i>
-					<h4>Không có sách nào đang được mượn</h4>
-					<p>Hiện tại không có sách nào trong trạng thái đang mượn.</p>
-					<a href="admin_dashboard.php" class="btn btn-primary">
-						<i class="fas fa-home"></i> Về Dashboard
-					</a>
+			<div class="stats-info mb-4">
+				<div class="row text-center">
+					<div class="col-md-12">
+						<h5 class="text-success mb-1"><?php echo $total_users; ?></h5>
+						<small class="text-muted">Tổng số bạn đọc đã đăng ký</small>
+					</div>
 				</div>
-				<?php
-					}
-				?>
 			</div>
 			
-			<?php if($row_count > 0) { ?>
-			<div class="mt-3">
-				<div class="alert alert-info">
-					<i class="fas fa-info-circle"></i> 
-					<strong>Tổng cộng:</strong> <?php echo $row_count; ?> sách đang được mượn
-				</div>
+			<!-- Form tìm kiếm -->
+			<div class="search-form mb-4">
+				<form method="GET" action="Regusers.php">
+					<div class="row">
+						<div class="col-md-10">
+							<input type="text" class="form-control" name="query" 
+								   placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..." 
+								   value="<?php echo htmlspecialchars($query_string); ?>">
+						</div>
+						<div class="col-md-2">
+							<button class="btn btn-success btn-block" type="submit">
+								<i class="fas fa-search"></i> Tìm kiếm
+							</button>
+						</div>
+					</div>
+				</form>
 			</div>
+
+			<?php 
+			$query_run = mysqli_query($connection,$query);
+			if(mysqli_num_rows($query_run) > 0) { ?>
+				<div class="table-responsive">
+					<table class="table table-hover">
+						<thead>
+							<tr>
+								<th><i class="fas fa-list-ol"></i> STT</th>
+								<th><i class="fas fa-user"></i> Thông tin người dùng</th>
+								<th><i class="fas fa-phone"></i> Liên hệ</th>
+								<th><i class="fas fa-map-marker-alt"></i> Địa chỉ</th>
+								<th><i class="fas fa-info-circle"></i> Trạng thái</th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php
+							$stt = 1;
+							while ($row = mysqli_fetch_assoc($query_run)){
+								$name = $row['name'];
+								$email = $row['email'];
+								$mobile = $row['mobile'];
+								$address = $row['address'];
+								
+								// Giả sử trạng thái active (có thể thêm field status vào database)
+								$status = "active";
+								$status_badge = "success";
+								$status_text = "Hoạt động";
+							?>
+							<tr>
+								<td><?php echo $stt++; ?></td>
+								<td class="user-info-cell">
+									<div class="user-name"><?php echo htmlspecialchars($name);?></div>
+									<div class="user-email"><?php echo htmlspecialchars($email);?></div>
+								</td>
+								<td class="contact-info">
+									<i class="fas fa-phone-alt text-success"></i> <?php echo htmlspecialchars($mobile);?>
+								</td>
+								<td>
+									<div class="address-info"><?php echo htmlspecialchars($address);?></div>
+								</td>
+								<td>
+									<span class="badge badge-<?php echo $status_badge; ?>">
+										<?php echo $status_text; ?>
+									</span>
+								</td>
+							</tr>
+							<?php
+							}
+							?>	
+						</tbody>
+					</table>
+				</div>
+				
+			<?php } else { ?>
+				<div class="alert alert-info text-center">
+					<i class="fas fa-info-circle"></i>
+					<h5>Không có bạn đọc nào</h5>
+					<p class="mb-0">
+						<?php if($query_string != '') { ?>
+							Không tìm thấy bạn đọc nào phù hợp với từ khóa "<strong><?php echo htmlspecialchars($query_string); ?></strong>".
+							<br><a href="Regusers.php" class="btn btn-success mt-2">
+								<i class="fas fa-list"></i> Xem tất cả bạn đọc
+							</a>
+						<?php } else { ?>
+							Hiện tại chưa có bạn đọc nào đăng ký.
+							<br><a href="add_user.php" class="btn btn-success mt-2">
+								<i class="fas fa-user-plus"></i> Thêm bạn đọc mới
+							</a>
+						<?php } ?>
+					</p>
+				</div>
 			<?php } ?>
 		</div>
 	</div>
@@ -372,7 +392,7 @@
 					var isOpen = $parent.hasClass('show');
 					
 					// Đóng tất cả dropdown khác
-					$('.dropdown').removeClass;
+					$('.dropdown').removeClass('show');
 					$('.dropdown-toggle').attr('aria-expanded', 'false');
 					
 					// Toggle dropdown hiện tại

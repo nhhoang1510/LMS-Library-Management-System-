@@ -1,18 +1,11 @@
 <?php
+	require("functions.php");
 	session_start();
-	#fetch data from database
-	$connection = mysqli_connect("localhost","root","");
-	$db = mysqli_select_db($connection,"lms");
-	$book_name = "";
-	$author = "";
-	$book_no = "";
-	$student_name = "";
-	$query = "select issued_books.book_name,issued_books.book_author,users.name,issued_books.issue_date,issued_books.status,issued_books.return_date from issued_books left join users on issued_books.student_id = users.id where issued_books.status = 1";
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Sách đã mượn | LMS</title>
+	<title>Dashboard</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	
@@ -26,7 +19,7 @@
 			background-color: #f8f9fa;
 		}
 		
-		.content-section {
+		.admin-section {
 			background: white;
 			padding: 30px;
 			border-radius: 8px;
@@ -34,71 +27,102 @@
 			margin: 20px 0;
 		}
 		
-		.page-header {
-			background: linear-gradient(45deg, #ffc107, #e0a800);
-			color: white;
-			padding: 30px;
-			border-radius: 8px;
-			text-align: center;
-			margin-bottom: 30px;
-		}
-		
-		.table-responsive {
+		.dashboard-card {
+			transition: transform 0.2s;
 			box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-			border-radius: 8px;
-			overflow: hidden;
-		}
-		
-		.table {
-			margin-bottom: 0;
-		}
-		
-		.table thead th {
-			background: linear-gradient(45deg, #ffc107, #e0a800);
-			color: #212529;
 			border: none;
+			border-radius: 8px;
+			margin-bottom: 20px;
+		}
+		
+		.dashboard-card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+		}
+		
+		.card-header {
+			background: linear-gradient(45deg, #007bff, #0056b3);
+			color: white;
+			border-radius: 8px 8px 0 0 !important;
 			font-weight: 500;
 			text-align: center;
-			vertical-align: middle;
-			padding: 15px 8px;
-			font-size: 0.9em;
 		}
 		
-		.table tbody td {
-			text-align: center;
-			vertical-align: middle;
-			padding: 12px 8px;
-			border-bottom: 1px solid #dee2e6;
-			font-size: 0.9em;
+		.card-users .card-header {
+			background: linear-gradient(45deg, #28a745, #20c997);
 		}
 		
-		.table tbody tr:hover {
-			background-color: #f8f9fa;
+		.card-books .card-header {
+			background: linear-gradient(45deg, #17a2b8, #138496);
 		}
 		
-		.status-badge {
-			padding: 5px 10px;
-			border-radius: 15px;
-			font-size: 0.8em;
-			font-weight: 500;
-			white-space: nowrap;
+		.card-issued .card-header {
+			background: linear-gradient(45deg, #ffc107, #e0a800);
 		}
 		
-		.status-issued {
-			background-color: #ffc107;
+		.btn-primary {
+			background: linear-gradient(45deg, #007bff, #0056b3);
+			border: none;
+			border-radius: 5px;
+			padding: 8px 20px;
+		}
+		
+		.btn-success {
+			background: linear-gradient(45deg, #28a745, #20c997);
+			border: none;
+			border-radius: 5px;
+			padding: 8px 20px;
+		}
+		
+		.btn-warning {
+			background: linear-gradient(45deg, #ffc107, #e0a800);
+			border: none;
+			border-radius: 5px;
+			padding: 8px 20px;
 			color: #212529;
 		}
 		
-		.status-returned {
-			background-color: #28a745;
-			color: white;
+		.card-body {
+			text-align: center;
+			padding: 25px;
+		}
+		
+		.card-text {
+			font-size: 1.1em;
+			margin-bottom: 20px;
+			color: #6c757d;
+		}
+		
+		.stats-number {
+			font-size: 2em;
+			font-weight: bold;
+			color: #007bff;
+			display: block;
+			margin-bottom: 10px;
 		}
 		
 		.navbar-light {
 			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 		}
 		
-		/* Custom dropdown styles */
+		.welcome-section {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 40px;
+			border-radius: 8px;
+			text-align: center;
+			margin: 20px 0;
+		}
+		
+		.quick-actions {
+			background: white;
+			padding: 25px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+			margin: 20px 0;
+		}
+		
+		/* Custom dropdown styles để đảm bảo hoạt động */
 		.dropdown-menu {
 			display: none;
 			position: absolute;
@@ -145,54 +169,6 @@
 			margin: 0.5rem 0;
 			overflow: hidden;
 			border-top: 1px solid #e9ecef;
-		}
-		
-		.back-btn {
-			margin-bottom: 20px;
-		}
-		
-		.empty-state {
-			text-align: center;
-			padding: 50px;
-			color: #6c757d;
-		}
-		
-		.empty-state i {
-			font-size: 3em;
-			margin-bottom: 20px;
-			color: #dee2e6;
-		}
-		
-		.alert-info {
-			background: linear-gradient(45deg, #fff3cd, #ffeaa7);
-			border: 1px solid #ffc107;
-			color: #856404;
-		}
-		
-		.btn-primary {
-			background: linear-gradient(45deg, #ffc107, #e0a800);
-			border: none;
-			color: #212529;
-			font-weight: 500;
-		}
-		
-		.btn-primary:hover {
-			background: linear-gradient(45deg, #e0a800, #d39e00);
-			color: #212529;
-		}
-		
-		/* Responsive table adjustments */
-		@media (max-width: 768px) {
-			.table thead th,
-			.table tbody td {
-				padding: 8px 4px;
-				font-size: 0.8em;
-			}
-			
-			.status-badge {
-				font-size: 0.7em;
-				padding: 3px 6px;
-			}
 		}
 	</style>
 </head>
@@ -258,87 +234,42 @@
 				</ul>
 			</div>
 		</div>
-	</nav>
+	</nav><br>
 
-	<div class="container-fluid">
-		<div class="content-section">
-			<div class="table-responsive">
-				<?php
-					$query_run = mysqli_query($connection,$query);
-					$row_count = mysqli_num_rows($query_run);
-					
-					if($row_count > 0) {
-				?>
-				<table class="table table-hover">
-					<thead>
-						<tr>
-							<th><i class="fas fa-book"></i> Tên sách</th>
-							<th><i class="fas fa-user-edit"></i> Tác giả</th>
-							<th><i class="fas fa-user"></i> Người mượn</th>
-							<th><i class="fas fa-calendar-alt"></i> Ngày mượn</th>
-							<th><i class="fas fa-calendar-check"></i> Ngày trả</th>
-							<th><i class="fas fa-info-circle"></i> Trạng thái</th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php
-							mysqli_data_seek($query_run, 0); // Reset pointer
-							while ($row = mysqli_fetch_assoc($query_run)){
-								$status_text = ($row['status'] == 1) ? 'Đang mượn' : 'Đã trả';
-								$status_class = ($row['status'] == 1) ? 'status-issued' : 'status-returned';
-								
-								// Format dates
-								$issue_date = date('d/m/Y', strtotime($row['issue_date']));
-								
-								// Handle return date - check if it's a valid date and not 0000-00-00
-								$return_date = '';
-								if ($row['return_date'] && $row['return_date'] != '0000-00-00') {
-									$return_date = date('d/m/Y', strtotime($row['return_date']));
-								} else {
-									$return_date = '<span class="text-muted"><i>Chưa trả</i></span>';
-								}
-								?>
-								<tr>
-									<td><strong><?php echo htmlspecialchars($row['book_name']);?></strong></td>
-									<td><?php echo htmlspecialchars($row['book_author']);?></td>
-									<td><?php echo htmlspecialchars($row['name']);?></td>
-									<td><?php echo $issue_date;?></td>
-									<td><?php echo $return_date;?></td>
-									<td>
-										<span class="status-badge <?php echo $status_class;?>">
-											<?php echo $status_text;?>
-										</span>
-									</td>
-								</tr>
-							<?php
-							}
-						?>	
-					</tbody>
-				</table>
-				<?php
-					} else {
-				?>
-				<div class="empty-state">
-					<i class="fas fa-book-open"></i>
-					<h4>Không có sách nào đang được mượn</h4>
-					<p>Hiện tại không có sách nào trong trạng thái đang mượn.</p>
-					<a href="admin_dashboard.php" class="btn btn-primary">
-						<i class="fas fa-home"></i> Về Dashboard
-					</a>
+	<div class="container">
+		<div class="row justify-content-center">
+			<div class="col-md-4">
+				<div class="card dashboard-card card-users">
+					<div class="card-header">Người dùng đã đăng ký</div>
+					<div class="card-body">
+						<span class="stats-number"><?php echo get_user_count();?></span>
+						<p class="card-text">Tổng số người dùng trong hệ thống</p>
+						<a class="btn btn-primary" href="Regusers.php" target="_blank">Xem chi tiết</a>
+					</div>
 				</div>
-				<?php
-					}
-				?>
 			</div>
 			
-			<?php if($row_count > 0) { ?>
-			<div class="mt-3">
-				<div class="alert alert-info">
-					<i class="fas fa-info-circle"></i> 
-					<strong>Tổng cộng:</strong> <?php echo $row_count; ?> sách đang được mượn
+			<div class="col-md-4">
+				<div class="card dashboard-card card-books">
+					<div class="card-header">Số sách</div>
+					<div class="card-body">
+						<span class="stats-number"><?php echo get_book_count();?></span>
+						<p class="card-text">Tổng đầu sách trong thư viện</p>
+						<a class="btn btn-success" href="Regbooks.php" target="_blank">Xem chi tiết</a>
+					</div>
 				</div>
 			</div>
-			<?php } ?>
+			
+			<div class="col-md-4">
+				<div class="card dashboard-card card-issued">
+					<div class="card-header">Lịch sử mượn trả</div>
+					<div class="card-body">
+						<span class="stats-number"><?php echo get_issue_book_count();?></span>
+						<p class="card-text">Số sách hiện đang được mượn</p>
+						<a class="btn btn-warning" href="view_issued_book.php" target="_blank">Xem chi tiết</a>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -372,7 +303,7 @@
 					var isOpen = $parent.hasClass('show');
 					
 					// Đóng tất cả dropdown khác
-					$('.dropdown').removeClass;
+					$('.dropdown').removeClass('show');
 					$('.dropdown-toggle').attr('aria-expanded', 'false');
 					
 					// Toggle dropdown hiện tại
