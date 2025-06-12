@@ -1,104 +1,186 @@
-<?php
-	session_start();
+<?php 
+    session_start();
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>LMS</title>
-	<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" type="text/css" href="bootstrap-4.4.1/css/bootstrap.min.css">
-	<script type="text/javascript" src="user/bootstrap-4.4.1/js/jquery_latest.js"></script>
-	<script type="text/javascript" src="user/bootstrap-4.4.1/js/bootstrap.min.js"></script>
-	<style type="text/css">
-		body, html {
-			height: 100%;
-			margin: 0;
-			padding: 0;
-			background-color: whitesmoke;
-		}
-		.full-height {
-			height: 100vh;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-		}
-		#main_content {
-			padding: 40px;
-			background-color: white;
-			border-radius: 10px;
-			box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    <meta charset="UTF-8">
+    <title>Đăng nhập LMS</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f2f2f2;
+        }
+		/* Bảng đăng nhập */
+        .login {
+            margin-top: 50px;
 			width: 100%;
-			max-width: 500px;
-		}
-	</style>
+            max-width: 480px;
+            background-color: #fffdfd;
+            padding: 60px;
+            border-radius: 20px;
+        }
+
+		/* Màu của header */
+        .header {
+            background-color: #32434e;
+            color: white;
+            font-size: 25px;
+            font-weight: bold;
+            display: flex;                  
+            justify-content: space-between; 
+            align-items: center;           
+            padding: 15px 30px;            
+        }
+
+        /* Chữ trong phần header */
+        .nav-links a {
+            margin: 0 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        } 
+
+        /* Nút đăng nhập ở header */
+        .custom-button-login-header {
+            padding: 8px 16px;
+            background-color: #377cb0; 
+            color: white;              
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .custom-button-login-header:hover {
+            background-color: #93bee4;
+            color: white;
+        }
+
+        /* Nút đăng ký ở header */
+        .custom-button-header {
+            padding: 8px 16px;
+            background-color: #ffffff; 
+            color: rgb(3, 0, 8);              
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .custom-button-header:hover {
+            background-color: #96b0ff; 
+            color: white;
+        }
+
+        /* Nút đăng nhập */
+        .custom-button {
+            padding: 8px 16px;
+            background-color: #377cb0; 
+            color: white;              
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .custom-button:hover {
+            background-color: #a562e9; 
+        }
+
+        /* Gạch dưới chữ Admin */
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 50px;
+        }
+    </style>
 </head>
+
 <body>
-	<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-		<div class="container-fluid">
-			<div class="navbar-header">
-				<a class="navbar-brand" href="index.php">Library Management System (LMS)</a>
-			</div>
-		    <ul class="nav navbar-nav navbar-right">
-		      <li class="nav-item">
-		        <a class="nav-link" href="admin/index.php">Đăng nhập admin</a>
-		      </li>
-		      <li class="nav-item">
-		        <a class="nav-link" href="signup.php">Đăng ký</a>
-		      </li>
-		      <li class="nav-item">
-		        <a class="nav-link" href="index.php">Đăng nhập</a>
-		      </li>
-		    </ul>
-		</div>
-	</nav><br>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <a href="index.php" style="color: white">
+                Hệ thống LMS  
+                <img src="https://cdn-icons-png.flaticon.com/128/14488/14488111.png" width="40" style="vertical-align: middle; margin-left: 10px;">
+            </a> 
+        </div>
+        <div class="nav-links">
+            <a href="index.php"><button class="custom-button-login-header"><b>Đăng nhập</b></button></a>
+            <a href="signup.php"><button class="custom-button-header"><b>Đăng ký</b></button></a>
+            <a href="admin_login.php"><b>Admin</b></a>
+        </div>
+    </div>
 
-	<div class="full-height">
-		<div id="main_content">
-			<center><h3>Đăng nhập</h3></center>
-			<form action="" method="POST">
-				<div class="form-group">
-					<label for="email">Email:</label>
-					<input type="email" name="email" class="form-control" required>
-				</div>
-				<div class="form-group">
-					<label for="password">Mật khẩu:</label>
-					<input type="password" name="password" class="form-control" required>
-				</div>
-				<div class="form-group">
-					<button type="submit" name="login" class="btn btn-primary btn-block">Đăng nhập</button>
-				</div>
-				<div class="form-group text-center">
-					<a href="signup.php">Bạn chưa có tài khoản?</a>
-				</div>
-			</form>
+    <!-- Đăng nhập người dùng -->
+    <div class="d-flex justify-content-center">
+        <div class="login card shadow">
+            <h3 class="text-center mb-4">
+                <img src="https://cdn-icons-png.flaticon.com/128/7542/7542114.png" width="40">
+                <b>Đăng nhập</b>
+            </h3>
+            <form method="POST" action="">
+                <div class="form-group">
+                    <label for="email">
+                        <img src="https://cdn-icons-png.flaticon.com/128/61/61205.png" width="20" style="margin-right: 5px; vertical-align: text-bottom;">
+                        Tài khoản người dùng:
+                    </label>
+                    <input type="email" name="email" class="form-control" id="email" placeholder="Nhập email*">
+                </div>
+                <div class="form-group">
+                    <label for="password">
+                        <img src="https://cdn-icons-png.flaticon.com/128/483/483408.png" width="20" style="margin-right: 5px; vertical-align: text-bottom;">
+                        Mật khẩu:
+                    </label>
+                    <input type="password" name="password" class="form-control" id="password" required placeholder="Nhập mật khẩu*">
+                </div>
+                <div style="text-align: center;">
+                    <button class="custom-button" name="login"><b>Đăng nhập</b></button>
+                </div>
+                <div class="form-group text-center mt-3">
+                    Nếu bạn chưa có tài khoản, vui lòng <a href="signup.php">Đăng ký</a>
+                </div>
+            </form>
+            <?php 
+                if (isset($_POST['email']) && isset($_POST['password'])) {
+                    $connection = mysqli_connect("localhost", "root", "", "lms");
 
-			<?php 
-				if(isset($_POST['login'])){
-					$connection = mysqli_connect("localhost","root","");
-					$db = mysqli_select_db($connection,"lms");
-					$email = mysqli_real_escape_string($connection, $_POST['email']);
-					$password = mysqli_real_escape_string($connection, $_POST['password']);
+                    if (!$connection) {
+                        die("Kết nối thất bại: " . mysqli_connect_error());
+                    }
 
-					$query = "SELECT * FROM users WHERE email = '$email'";
-					$query_run = mysqli_query($connection, $query);
+                    $email = mysqli_real_escape_string($connection, $_POST['email']);
+                    $password = $_POST['password'];
 
-					if(mysqli_num_rows($query_run) > 0){
-						$row = mysqli_fetch_assoc($query_run);
-						if($row['password'] == $password){
-							$_SESSION['name'] = $row['name'];
-							$_SESSION['email'] = $row['email'];
-							$_SESSION['id'] = $row['id'];
-							header("Location: user_dashboard.php");
-							exit();
-						} else {
-							echo "<center><span class='alert alert-danger d-block mt-3'>Mật khẩu không đúng</span></center>";
-						}
-					} else {
-						echo "<center><span class='alert alert-danger d-block mt-3'>Tài khoản không tồn tại</span></center>";
-					}
-				}
-			?>
-		</div>
-	</div>
+                    $query = "SELECT * FROM users WHERE email = '$email'";
+                    $result = mysqli_query($connection, $query);
+
+                    if (mysqli_num_rows($result) > 0) {
+                        $row = mysqli_fetch_assoc($result);
+                        if (password_verify($password, $row['password'])) {
+                            $_SESSION['id'] = $row['id'];
+                            $_SESSION['email'] = $row['email'];
+                            $_SESSION['name'] = $row['name'];
+                            header("Location: user_dashboard.php");
+                            exit();
+                        } else {
+                            echo "<div class='alert alert-danger text-center mt-3'>Mật khẩu không đúng</div>";
+                        }
+                    } else {
+                        echo "<div class='alert alert-danger text-center mt-3'>Tài khoản không tồn tại</div>";
+                    }
+                }
+            ?>
+        </div>
+    </div>
+    <div style="height: 50px;"></div>
 </body>
 </html>

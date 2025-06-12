@@ -55,15 +55,25 @@
 	</style>
 </head>
 <body>
-	<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+	 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
 		<div class="container-fluid">
 			<div class="navbar-header">
-				<a class="navbar-brand" href="user_dashboard.php">Library Management System (LMS)</a>
+				<a class="navbar-brand" href="user_dashboard.php">LMS</a>
 			</div>
 		    <ul class="nav navbar-nav navbar-right">
 		      <li class="nav-item dropdown">
-	        	<a class="nav-link dropdown-toggle" data-toggle="dropdown">Hồ sơ của tôi </a>
-	        	<div class="dropdown-menu">
+	        	<a class="nav-link dropdown-toggle" href="#" id="bookDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Quản lý sách </a>
+	        	<div class="dropdown-menu" aria-labelledby="bookDropdown">
+	        		<a class="dropdown-item" href="borrow_book.php">Mượn sách</a>
+	        		<div class="dropdown-divider"></div>
+	        		<a class="dropdown-item" href="return_book.php">Trả sách</a>
+	        		<div class="dropdown-divider"></div>
+	        		<a class="dropdown-item" href="search_book.php">Tìm kiếm sách</a>
+	        	</div>
+		      </li>
+		      <li class="nav-item dropdown">
+	        	<a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Hồ sơ của tôi </a>
+	        	<div class="dropdown-menu" aria-labelledby="profileDropdown">
 	        		<a class="dropdown-item" href="view_profile.php">Xem hồ sơ</a>
 	        		<div class="dropdown-divider"></div>
 	        		<a class="dropdown-item" href="edit_profile.php">Chỉnh sửa hồ sơ</a>

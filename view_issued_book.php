@@ -1,13 +1,13 @@
 <?php
 	session_start();
-	#fetch data from database
+
 	$connection = mysqli_connect("localhost","root","");
 	$db = mysqli_select_db($connection,"lms");
 	$book_name = "";
 	$author = "";
 	$book_no = "";
 	$student_name = "";
-	$query = "select issued_books.book_name,issued_books.book_author,users.name,issued_books.issue_date,issued_books.status,issued_books.return_date from issued_books left join users on issued_books.student_id = users.id where issued_books.status = 1";
+	$query = "select issued_books.book_name,issued_books.book_author,users.name,issued_books.issue_date,issued_books.status,issued_books.return_date from issued_books left join users on issued_books.student_id = users.id ORDER BY issued_books.status ASC, issued_books.issue_date DESC";
 ?>
 <!DOCTYPE html>
 <html>
@@ -15,10 +15,7 @@
 	<title>Sách đã mượn | LMS</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	
-	<!-- Bootstrap 4 CSS -->
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-	<!-- Font Awesome -->
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 	
 	<style>
@@ -97,8 +94,6 @@
 		.navbar-light {
 			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 		}
-		
-		/* Custom dropdown styles */
 		.dropdown-menu {
 			display: none;
 			position: absolute;
@@ -180,8 +175,20 @@
 			background: linear-gradient(45deg, #e0a800, #d39e00);
 			color: #212529;
 		}
+		.filter-buttons {
+			margin-bottom: 20px;
+		}
 		
-		/* Responsive table adjustments */
+		.btn-filter {
+			margin-right: 10px;
+			margin-bottom: 10px;
+		}
+		
+		.btn-filter.active {
+			background-color: #ffc107;
+			border-color: #ffc107;
+			color: #212529;
+		}
 		@media (max-width: 768px) {
 			.table thead th,
 			.table tbody td {
@@ -199,69 +206,49 @@
 <body>
 	<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
 		<div class="container-fluid">
-			<a class="navbar-brand" href="admin_dashboard.php">
-				<i class="fas fa-book-open"></i> LMS
-			</a>
-			
-			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-				<span class="navbar-toggler-icon"></span>
-			</button>
-			
-			<div class="collapse navbar-collapse" id="navbarNav">
-				<ul class="navbar-nav ml-auto">
-					<li class="nav-item dropdown">
-						<a class="nav-link dropdown-toggle" href="#" id="bookDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-							<i class="fas fa-cog"></i> Quản lý sách 
-						</a>
-						<div class="dropdown-menu" aria-labelledby="bookDropdown">
-							<a class="dropdown-item" href="view_issued_book.php">
-								<i class="fas fa-history"></i> Lịch sử mượn/trả
-							</a>
-							<div class="dropdown-divider"></div>
-							<a class="dropdown-item" href="edit_book.php">
-								<i class="fas fa-edit"></i> Chỉnh sửa
-							</a>
-							<div class="dropdown-divider"></div>
-							<a class="dropdown-item" href="manage_book.php">
-								<i class="fas fa-cog"></i> Kho sách
-							</a>
-							<div class="dropdown-divider"></div>
-							<a class="dropdown-item" href="add_book.php">
-								<i class="fas fa-plus"></i> Thêm sách
-							</a>
-						</div>
-					</li>
-					<li class="nav-item dropdown">
-						<a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-							<i class="fas fa-user"></i> Hồ sơ
-						</a>
-						<div class="dropdown-menu" aria-labelledby="profileDropdown">
-							<a class="dropdown-item" href="view_profile.php">
-								<i class="fas fa-eye"></i> Xem hồ sơ
-							</a>
-							<div class="dropdown-divider"></div>
-							<a class="dropdown-item" href="edit_profile.php">
-								<i class="fas fa-edit"></i> Chỉnh sửa hồ sơ
-							</a>
-							<div class="dropdown-divider"></div>
-							<a class="dropdown-item" href="change_password.php">
-								<i class="fas fa-key"></i> Đổi mật khẩu
-							</a>
-							
-						</div>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link" href="logout.php">
-							<i class="fas fa-sign-out-alt"></i> Đăng xuất
-						</a>
-					</li>
-				</ul>
+			<div class="navbar-header">
+				<a class="navbar-brand" href="user_dashboard.php">LMS</a>
 			</div>
+		    <ul class="nav navbar-nav navbar-right">
+		      <li class="nav-item dropdown">
+	        	<a class="nav-link dropdown-toggle" href="#" id="bookDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Quản lý sách </a>
+	        	<div class="dropdown-menu" aria-labelledby="bookDropdown">
+	        		<a class="dropdown-item" href="borrow_book.php">Mượn sách</a>
+	        		<div class="dropdown-divider"></div>
+	        		<a class="dropdown-item" href="return_book.php">Trả sách</a>
+	        	</div>
+		      </li>
+		      <li class="nav-item dropdown">
+	        	<a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Hồ sơ của tôi </a>
+	        	<div class="dropdown-menu" aria-labelledby="profileDropdown">
+	        		<a class="dropdown-item" href="view_profile.php">Xem hồ sơ</a>
+	        		<div class="dropdown-divider"></div>
+	        		<a class="dropdown-item" href="edit_profile.php">Chỉnh sửa hồ sơ</a>
+	        		<div class="dropdown-divider"></div>
+	        		<a class="dropdown-item" href="change_password.php">Đổi mật khẩu</a>
+	        	</div>
+		      </li>
+		      <li class="nav-item">
+		        <a class="nav-link" href="logout.php">Đăng xuất</a>
+		      </li>
+		    </ul>
 		</div>
 	</nav>
 
 	<div class="container-fluid">
 		<div class="content-section">
+			<div class="filter-buttons">
+				<button class="btn btn-outline-primary btn-filter active" data-filter="all">
+					<i class="fas fa-list"></i> Tất cả
+				</button>
+				<button class="btn btn-outline-warning btn-filter" data-filter="borrowing">
+					<i class="fas fa-book"></i> Đang mượn
+				</button>
+				<button class="btn btn-outline-success btn-filter" data-filter="returned">
+					<i class="fas fa-check"></i> Đã trả
+				</button>
+			</div>
+			
 			<div class="table-responsive">
 				<?php
 					$query_run = mysqli_query($connection,$query);
@@ -282,23 +269,34 @@
 					</thead>
 					<tbody>
 						<?php
-							mysqli_data_seek($query_run, 0); // Reset pointer
+							mysqli_data_seek($query_run, 0); 
+							$borrowing_count = 0;
+							$returned_count = 0;
+							
 							while ($row = mysqli_fetch_assoc($query_run)){
-								$status_text = ($row['status'] == 1) ? 'Đang mượn' : 'Đã trả';
-								$status_class = ($row['status'] == 1) ? 'status-issued' : 'status-returned';
+								$is_borrowing = ($row['status'] == 'Chưa trả');
+								$status_text = $is_borrowing ? 'Đang mượn' : 'Đã trả';
+								$status_class = $is_borrowing ? 'status-issued' : 'status-returned';
+								$row_class = $is_borrowing ? 'row-borrowing' : 'row-returned';
 								
-								// Format dates
+								if ($is_borrowing) {
+									$borrowing_count++;
+								} else {
+									$returned_count++;
+								}
+								
 								$issue_date = date('d/m/Y', strtotime($row['issue_date']));
 								
-								// Handle return date - check if it's a valid date and not 0000-00-00
 								$return_date = '';
-								if ($row['return_date'] && $row['return_date'] != '0000-00-00') {
+								if (!$is_borrowing && $row['return_date'] && $row['return_date'] != '0000-00-00') {
 									$return_date = date('d/m/Y', strtotime($row['return_date']));
-								} else {
+								} else if ($is_borrowing) {
 									$return_date = '<span class="text-muted"><i>Chưa trả</i></span>';
+								} else {
+									$return_date = '<span class="text-warning"><i>Chưa cập nhật</i></span>';
 								}
 								?>
-								<tr>
+								<tr class="<?php echo $row_class; ?>">
 									<td><strong><?php echo htmlspecialchars($row['book_name']);?></strong></td>
 									<td><?php echo htmlspecialchars($row['book_author']);?></td>
 									<td><?php echo htmlspecialchars($row['name']);?></td>
@@ -320,9 +318,9 @@
 				?>
 				<div class="empty-state">
 					<i class="fas fa-book-open"></i>
-					<h4>Không có sách nào đang được mượn</h4>
-					<p>Hiện tại không có sách nào trong trạng thái đang mượn.</p>
-					<a href="admin_dashboard.php" class="btn btn-primary">
+					<h4>Không có dữ liệu mượn sách</h4>
+					<p>Hiện tại không có dữ liệu mượn sách nào trong hệ thống.</p>
+					<a href="user_dashboard.php" class="btn btn-primary">
 						<i class="fas fa-home"></i> Về Dashboard
 					</a>
 				</div>
@@ -332,38 +330,46 @@
 			</div>
 			
 			<?php if($row_count > 0) { ?>
-			<div class="mt-3">
-				<div class="alert alert-info">
-					<i class="fas fa-info-circle"></i> 
-					<strong>Tổng cộng:</strong> <?php echo $row_count; ?> sách đang được mượn
+			<div class="row mt-3">
+				<div class="col-md-4">
+					<div class="alert alert-warning">
+						<i class="fas fa-book"></i> 
+						<strong>Đang mượn:</strong> <span id="borrowing-count"><?php echo $borrowing_count; ?></span> sách
+					</div>
+				</div>
+				<div class="col-md-4">
+					<div class="alert alert-success">
+						<i class="fas fa-check"></i> 
+						<strong>Đã trả:</strong> <span id="returned-count"><?php echo $returned_count; ?></span> sách
+					</div>
+				</div>
+				<div class="col-md-4">
+					<div class="alert alert-info">
+						<i class="fas fa-list"></i> 
+						<strong>Tổng cộng:</strong> <span id="total-count"><?php echo $row_count; ?></span> bản ghi
+					</div>
 				</div>
 			</div>
 			<?php } ?>
 		</div>
 	</div>
 
-	<!-- jQuery first -->
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
-	<!-- Popper.js -->
 	<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-	<!-- Bootstrap 4 JS -->
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js"></script>
 
 	<script>
-		// Kiểm tra và khởi tạo dropdown
+
 		$(document).ready(function() {
 			console.log('jQuery version:', $.fn.jquery);
 			console.log('Bootstrap loaded:', typeof $.fn.dropdown !== 'undefined');
 			
-			// Loại bỏ tất cả event listeners cũ
 			$('.dropdown-toggle').off('click');
 			
-			// Sử dụng Bootstrap dropdown mặc định
 			if (typeof $.fn.dropdown !== 'undefined') {
 				$('.dropdown-toggle').dropdown();
 				console.log('Bootstrap dropdown initialized');
 			} else {
-				// Fallback: Tự tạo dropdown functionality
 				$('.dropdown-toggle').on('click.customDropdown', function(e) {
 					e.preventDefault();
 					e.stopPropagation();
@@ -371,18 +377,15 @@
 					var $parent = $(this).parent();
 					var isOpen = $parent.hasClass('show');
 					
-					// Đóng tất cả dropdown khác
-					$('.dropdown').removeClass;
+					$('.dropdown').removeClass('show');
 					$('.dropdown-toggle').attr('aria-expanded', 'false');
 					
-					// Toggle dropdown hiện tại
 					if (!isOpen) {
 						$parent.addClass('show');
 						$(this).attr('aria-expanded', 'true');
 					}
 				});
-				
-				// Đóng dropdown khi click ra ngoài
+			
 				$(document).on('click.customDropdown', function(e) {
 					if (!$(e.target).closest('.dropdown').length) {
 						$('.dropdown').removeClass('show');
@@ -392,6 +395,53 @@
 				
 				console.log('Custom dropdown functionality added');
 			}
+			
+			$('.btn-filter').on('click', function() {
+				var filter = $(this).data('filter');
+				
+				$('.btn-filter').removeClass('active');
+				$(this).addClass('active');
+				
+				var visibleRows = 0;
+				var borrowingVisible = 0;
+				var returnedVisible = 0;
+				
+				$('tbody tr').each(function() {
+					var $row = $(this);
+					var shouldShow = false;
+					
+					if (filter === 'all') {
+						shouldShow = true;
+					} else if (filter === 'borrowing') {
+						shouldShow = $row.hasClass('row-borrowing');
+					} else if (filter === 'returned') {
+						shouldShow = $row.hasClass('row-returned');
+					}
+					
+					if (shouldShow) {
+						$row.show();
+						visibleRows++;
+						
+						if ($row.hasClass('row-borrowing')) {
+							borrowingVisible++;
+						} else {
+							returnedVisible++;
+						}
+					} else {
+						$row.hide();
+					}
+				});
+				
+				if (filter === 'all') {
+					$('#borrowing-count').text(<?php echo $borrowing_count; ?>);
+					$('#returned-count').text(<?php echo $returned_count; ?>);
+					$('#total-count').text(<?php echo $row_count; ?>);
+				} else {
+					$('#borrowing-count').text(borrowingVisible);
+					$('#returned-count').text(returnedVisible);
+					$('#total-count').text(visibleRows);
+				}
+			});
 		});
 	</script>
 </body>

@@ -1,297 +1,387 @@
 <?php
 session_start();
 if(!isset($_SESSION['id'])) {
-    header("Location: user_login.php");
+    header("Location: index.php");
     exit();
 }
-$connection = mysqli_connect("localhost", "root", "");
-$db = mysqli_select_db($connection, "lms");
+
+// Kết nối database với error handling
+$connection = mysqli_connect("localhost", "root", "", "lms");
+if (!$connection) {
+    die("Kết nối database thất bại: " . mysqli_connect_error());
+}
+
+// Set charset để tránh lỗi encoding
+mysqli_set_charset($connection, 'utf8');
 
 $message = "";
 $alert_type = "";
 
 if(isset($_POST['borrow_book'])) {
-    $book_id = $_POST['book_id'];
-    $student_id = $_SESSION['id'];
+    $book_id = mysqli_real_escape_string($connection, $_POST['book_id']);
+    $student_id = mysqli_real_escape_string($connection, $_SESSION['id']);
     
+    // Kiểm tra xem sách có tồn tại không
     $book_query = "SELECT * FROM books WHERE book_id = '$book_id'";
     $book_result = mysqli_query($connection, $book_query);
     
     if(mysqli_num_rows($book_result) > 0) {
         $book = mysqli_fetch_assoc($book_result);
         
+        // Kiểm tra số lượng sách có sẵn
         if($book['book_quantity'] > 0) {
-            $issue_date = date('Y-m-d');
-            $return_date = 'NULL'; 
+            $request_date = date('Y-m-d');
             
-            $insert_query = "INSERT INTO issued_books (book_name, book_author, student_id, status, issue_date, return_date) 
-                           VALUES ('" . mysqli_real_escape_string($connection, $book['book_name']) . "', 
-                                   '" . mysqli_real_escape_string($connection, $book['book_author']) . "', 
-                                   '$student_id', 'Chưa trả', '$issue_date', '$return_date')";
-                                   
-            if(mysqli_query($connection, $insert_query)) {
-                $new_quantity = $book['book_quantity'] - 1;
-                $update_query = "UPDATE books SET book_quantity = '$new_quantity' WHERE book_id = '$book_id'";
+            // Bắt đầu transaction
+            mysqli_autocommit($connection, false);
+            
+            try {
+                // Thêm yêu cầu mượn sách vào bảng user_request
+                $insert_request_query = "INSERT INTO user_request 
+                                       (student_id, book_id, request_date, return_date, action, status) 
+                                       VALUES ('$student_id', '$book_id', '$request_date', '0000-00-00', 'Mượn', 'pending')";
                 
-                if(mysqli_query($connection, $update_query)) {
-                    $message = "Mượn sách thành công! ";
+                if(mysqli_query($connection, $insert_request_query)) {
+                    // Lấy ID của request vừa tạo
+                    $request_id = mysqli_insert_id($connection);
+                    
+                    // Commit transaction
+                    mysqli_commit($connection);
+                    
+                    $message = "Gửi yêu cầu mượn sách \"" . $book['book_name'] . "\" thành công! Mã yêu cầu: #$request_id. Vui lòng chờ thư viện xác nhận.";
                     $alert_type = "success";
                 } else {
-                    $message = "Có lỗi xảy ra khi cập nhật số lượng sách!";
-                    $alert_type = "danger";
+                    throw new Exception("Lỗi khi thêm yêu cầu: " . mysqli_error($connection));
                 }
-            } else {
-                $message = "Có lỗi xảy ra khi mượn sách!";
+            } catch (Exception $e) {
+                // Rollback nếu có lỗi
+                mysqli_rollback($connection);
+                $message = "Có lỗi xảy ra khi gửi yêu cầu mượn sách: " . $e->getMessage();
                 $alert_type = "danger";
             }
+            
+            // Khôi phục autocommit
+            mysqli_autocommit($connection, true);
         } else {
-            $message = "Xin lỗi, sách này hiện đã hết!";
+            $message = "Xin lỗi, sách \"" . $book['book_name'] . "\" hiện đã hết!";
             $alert_type = "warning";
         }
     } else {
-        $message = "Không tìm thấy sách!";
+        $message = "Không tìm thấy sách với ID: $book_id!";
         $alert_type = "danger";
     }
 }
 
-// Lấy danh sách sách có sẵn để hiển thị
+// Xử lý tìm kiếm
 $query_string = isset($_GET['query']) ? trim($_GET['query']) : '';
+$where_clause = "WHERE book_quantity > 0";
+
 if($query_string != '') {
     $query_string_escaped = mysqli_real_escape_string($connection, $query_string);
-    $query = "SELECT * FROM books WHERE (book_name LIKE '%$query_string_escaped%' OR book_author LIKE '%$query_string_escaped%') AND book_quantity > 0 ORDER BY book_name ASC";
-} else {
-    $query = "SELECT * FROM books WHERE book_quantity > 0 ORDER BY book_name ASC";
+    $where_clause .= " AND (book_name LIKE '%$query_string_escaped%' OR book_author LIKE '%$query_string_escaped%')";
 }
-$query_run = mysqli_query($connection, $query);
 
-// Khởi tạo các biến thống kê
-$total_available = 0;
-$high_stock = 0;
-$medium_stock = 0;
-$low_stock = 0;
+$query = "SELECT * FROM books $where_clause ORDER BY book_name ASC";
+$query_run = mysqli_query($connection, $query);
+$books_to_borrow = [];
+if (mysqli_num_rows($query_run) > 0) {
+    while ($row = mysqli_fetch_assoc($query_run)) {
+        $books_to_borrow[] = $row;
+    }
+}
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Mượn sách - LMS</title>
-    <meta charset="utf-8" name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="bootstrap-4.4.1/css/bootstrap.min.css">
-    <script type="text/javascript" src="bootstrap-4.4.1/js/jquery.min.js"></script>
-    <script type="text/javascript" src="bootstrap-4.4.1/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
+	<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
     <style>
-        .high-stock {
-            background-color: #e8f5e8 !important;
-            color: #2e7d32;
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f2f2f2;
         }
-        .medium-stock {
-            background-color: #fff3e0 !important;
-            color: #ef6c00;
-        }
-        .low-stock {
-            background-color: #ffebee !important;
-            color: #c62828;
-        }
+
         .search-form {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 1rem;
+			max-width: 700px;
+			flex: 1;
+			margin: 0 auto;
+
+            padding: 12px;
+            border-radius: 20px;
+			margin-bottom: 30px;
         }
-        .borrowing-info {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+
+		.search-form .btn {
+    		border-radius: 0 5px 5px 0;
+    		height: 38px;
+			background-color: #3f6680;
+			color: white;
+		}
+
+		.search-form .btn:hover {
+			background-color: rgb(154, 187, 246);
+		}
+
+		.search-form .form-control {
+			border-radius: 5px 0 0 5px;
+			width: 450px;
+			border-right: none;
+			height: 38px;
+		}
+
+        .header {
+            background-color: #32434e;
+            color: rgb(17, 17, 17);
+            font-size: 25px;
+            font-weight: bold;
+            display: flex;                  
+            justify-content: space-between; 
+            align-items: center;           
+            padding: 15px 30px;            
         }
+
+		.hello {
+			background-image: url('https://images.unsplash.com/photo-1553448540-fe069f7c95bf?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+  			background-size: cover 110%;        
+			background-position: center 52.5%;
+			filter: brightness(1.2);
+			padding: 2rem;
+			margin-bottom: 30px;
+		}
+
+        .nav-links a {
+            margin: 0 10px;
+            color: rgb(11, 11, 11);
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+			color: rgb(154, 187, 246) !important;
+        }
+
+		.dashboard-card {
+			max-width: 700px;
+			flex: 1;
+			margin: 0 auto;
+            background-color: #314b5c;
+            padding: 0px;
+            border-radius: 20px;
+			color: white;
+			font-size: 18px;
+			overflow: hidden;
+		}
+		.dashboard-card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+		}
+
+		.card-header {
+			background-color: #ffffff;
+    		color: #2a3a44;
+    		font-size: 22px;
+    		font-weight: bold;
+    		text-align: center;
+    		padding: 15px;
+		}
+
+		.btn-success {
+			background-color: rgb(207, 224, 253);
+			border-radius: 10px;
+			color:rgb(2, 62, 82)
+		}
+		.btn-success:hover {
+			background-color: #63dcc1;
+			border-radius: 10px;
+			color:rgb(23, 23, 23)
+		}
     </style>
 </head>
+
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <a class="navbar-brand" href="user_dashboard.php">Library Management System (LMS)</a>
-            </div>
-            <ul class="nav navbar-nav navbar-right">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-toggle="dropdown">Hồ sơ của tôi </a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="view_profile.php">Xem hồ sơ</a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="edit_profile.php">Chỉnh sửa hồ sơ</a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="change_password.php">Đổi mật khẩu</a>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="logout.php">Đăng xuất</a>
-                </li>
-            </ul>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <a href="user_dashboard.php" style="color: white">
+                Hệ thống LMS  
+                <img src="https://cdn-icons-png.flaticon.com/128/14488/14488111.png" width="40" style="vertical-align: middle; margin-left: 10px;">
+            </a> 
         </div>
-    </nav><br>
-
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <h4 class="text-center mb-4">Mượn sách</h4>
-                <div class="search-form mb-4">
-                    <form method="GET" action="borrow_book.php">
-                        <div class="row">
-                            <div class="col-md-10">
-                                <input type="text" class="form-control" name="query" 
-                                       placeholder="Tìm kiếm theo tên sách hoặc tác giả..." 
-                                       value="<?php echo htmlspecialchars($query_string); ?>">
-                            </div>
-                            <div class="col-md-2">
-                                <button class="btn btn-primary btn-block" type="submit">Tìm kiếm</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <?php if($message != "") { ?>
-                    <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show" role="alert">
-                        <strong>
-                            <?php if($alert_type == 'success') echo 'Thành công!'; 
-                                  elseif($alert_type == 'danger') echo 'Lỗi!'; 
-                                  else echo 'Thông báo!'; ?>
-                        </strong> <?php echo $message; ?>
-                        <button type="button" class="close" data-dismiss="alert">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                <?php } ?>
-
-                <?php if(mysqli_num_rows($query_run) > 0) { ?>
-                    <div class="row mb-4">
-                        <?php 
-                            mysqli_data_seek($query_run, 0); 
-                            
-                            while($stat_row = mysqli_fetch_assoc($query_run)) {
-                                $total_available++;
-                                if($stat_row['book_quantity'] > 5) {
-                                    $high_stock++;
-                                } elseif($stat_row['book_quantity'] > 2) {
-                                    $medium_stock++;
-                                } else {
-                                    $low_stock++;
-                                }
-                            }
-                            mysqli_data_seek($query_run, 0); 
-                        ?>
-                        
-                        <div class="col-md-3">
-                            <div class="card text-center bg-primary text-white">
-                                <div class="card-body">
-                                    <h5><?php echo $total_available; ?></h5>
-                                    <p>Tổng đầu sách có sẵn</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card text-center bg-success text-white">
-                                <div class="card-body">
-                                    <h5><?php echo $high_stock; ?></h5>
-                                    <p>Số lượng nhiều</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card text-center bg-warning text-white">
-                                <div class="card-body">
-                                    <h5><?php echo $medium_stock; ?></h5>
-                                    <p>Số lượng vừa</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card text-center bg-danger text-white">
-                                <div class="card-body">
-                                    <h5><?php echo $low_stock; ?></h5>
-                                    <p>Số lượng ít</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header bg-dark text-white">
-                            <h5 class="mb-0">Danh sách sách có thể mượn</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>STT</th>
-                                            <th>Tên sách</th>
-                                            <th>Tác giả</th>
-                                            <th>Số lượng có sẵn</th>
-                                            <th>Trạng thái</th>
-                                            <th>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        $stt = 1;
-                                        while($row = mysqli_fetch_assoc($query_run)) {
-                                            $stock_class = '';
-                                            if($row['book_quantity'] > 5) {
-                                                $stock_class = 'high-stock';
-                                            } elseif($row['book_quantity'] > 2) {
-                                                $stock_class = 'medium-stock';
-                                            } else {
-                                                $stock_class = 'low-stock';
-                                            }
-                                        ?>
-                                        <tr class="<?php echo $stock_class; ?>">
-                                            <td><?php echo $stt++; ?></td>
-                                            <td><strong><?php echo htmlspecialchars($row['book_name']); ?></strong></td>
-                                            <td><?php echo htmlspecialchars($row['book_author']); ?></td>
-                                            <td>
-                                                <span class="badge badge-info"><?php echo $row['book_quantity']; ?></span>
-                                            </td>
-                                            <td>
-                                                <?php if($row['book_quantity'] > 5) { ?>
-                                                    <span class="badge badge-success">Còn nhiều</span>
-                                                <?php } elseif($row['book_quantity'] > 2) { ?>
-                                                    <span class="badge badge-warning">Còn ít</span>
-                                                <?php } else { ?>
-                                                    <span class="badge badge-danger">Sắp hết</span>
-                                                <?php } ?>
-                                            </td>
-                                            <td>
-                                                <form method="post" style="display: inline;">
-                                                    <input type="hidden" name="book_id" value="<?php echo $row['book_id']; ?>">
-                                                    <button type="submit" name="borrow_book" 
-                                                            class="btn btn-sm btn-primary"
-                                                            onclick="return confirm('Bạn có chắc chắn muốn mượn sách này?')">
-                                                        <i class="fas fa-book"></i> Mượn
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                <?php } else { ?>
-                    <div class="alert alert-info text-center">
-                        <h5><i class="fas fa-info-circle"></i> Không có sách nào</h5>
-                        <p class="mb-0">
-                            <?php if($query_string != '') { ?>
-                                Không tìm thấy sách nào phù hợp với từ khóa "<strong><?php echo htmlspecialchars($query_string); ?></strong>".
-                                <br><a href="borrow_book.php" class="btn btn-primary mt-2">Xem tất cả sách</a>
-                            <?php } else { ?>
-                                Hiện tại không có sách nào có sẵn để mượn.
-                            <?php } ?>
-                        </p>
-                    </div>
-                <?php } ?>
-            </div>
+        <div class="nav-links">
+            <ul class="navbar-nav ml-auto flex-row ">
+				<li class="nav-item dropdown">
+					<a class="nav-link dropdown-toggle" href="#" id="bookDropdown" role="button" data-toggle="dropdown" style="color: rgb(205, 203, 203)">Quản lý sách</a>
+					<div class="dropdown-menu">
+						<a class="dropdown-item" href="borrow_book.php">Mượn sách</a>
+						<div class="dropdown-divider"></div>
+						<a class="dropdown-item" href="return_book.php">Trả sách</a>
+					</div>
+				</li>
+				<li class="nav-item dropdown">
+					<a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-toggle="dropdown" style="color: rgb(205, 203, 203)">Hồ sơ của tôi</a>
+					<div class="dropdown-menu">
+						<a class="dropdown-item" href="view_profile.php">Xem hồ sơ</a>
+						<div class="dropdown-divider"></div>
+						<a class="dropdown-item" href="edit_profile.php">Chỉnh sửa hồ sơ</a>
+						<div class="dropdown-divider"></div>
+						<a class="dropdown-item" href="change_password.php">Đổi mật khẩu</a>
+					</div>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="logout.php" style="color: rgb(205, 203, 203)">Đăng xuất</a>
+				</li>
+			</ul>
         </div>
     </div>
+
+	<!-- Banner -->
+	<div class="hello">
+		<h1 class="text-center"> 
+			<img src="https://cdn-icons-png.flaticon.com/128/5849/5849203.png" width="50">
+			<b>Chào mừng bạn đến với Hệ thống LMS</b>
+		</h1>
+		<h5 class="text-center"><b><i>Tìm kiếm và quản lý sách dễ dàng hơn bao giờ hết</i></b></h5>
+	</div>
+
+    <!-- Tìm kiếm sách -->
+    <div class="d-flex justify-content-center">
+
+			<form class="search-form" action="search_book.php" method="GET">
+				<div class="input-group">
+					<input class="form-control" type="search" name="query" placeholder="Nhập tên sách hoặc tên tác giả..." required>
+					<div class="input-group-append">
+						<button class="btn btn-outline-success" type="submit">
+                            <img src="https://cdn-icons-png.flaticon.com/128/8915/8915520.png" width="20" style="vertical-align: middle; margin-right: 5px;">
+                            <b>Tìm kiếm</b></button>
+					</div>
+				</div>
+			</form>          
+    </div>
+
+    <?php if($message != "") { ?>
+        <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show" role="alert">
+            <strong>
+                <?php if($alert_type == 'success') echo '<i class="fas fa-check-circle"></i> Thành công!'; 
+                    elseif($alert_type == 'danger') echo '<i class="fas fa-exclamation-triangle"></i> Lỗi!'; 
+                    else echo '<i class="fas fa-info-circle"></i> Thông báo!'; ?>
+            </strong> <?php echo $message; ?>
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    <?php } ?>
+    <?php if(mysqli_num_rows($query_run) > 0) { ?>
+
+    <div class="container">
+    <h4 class="text-center mb-3">
+        <img src="https://cdn-icons-png.flaticon.com/128/10433/10433053.png" width="30" style="vertical-align: middle; margin-right: 5px;">
+        <b>Danh sách có thể mượn</b>
+        <?php if($query_string != '') { ?>
+            <small class="text-muted">- Kết quả tìm kiếm: "<?php echo htmlspecialchars($query_string); ?>"</small>
+        <?php } ?>
+    </h4>
+    
+<style>
+    .high-stock {
+        background-color: #e9f7ef;
+    }
+
+    .medium-stock {
+        background-color: #fff9e6;
+    }
+
+    .low-stock {
+        background-color: #fdecea;
+    }
+
+    .quantity-badge {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+
+    .book-title, .book-author {
+        font-weight: 500;
+    }
+
+    .btn-borrow {
+        background-color: #4a8bc2;
+        border: none;
+        border-radius: 10px;
+        padding: 6px 12px;
+        color: white;
+    }
+
+    .btn-borrow:hover {
+        background-color: #63a6e1;
+    }
+</style>
+
+<?php if (!empty($books_to_borrow)): ?>
+    <div class="table-responsive">
+        <table class="table table-hover shadow rounded bg-white">
+            <thead class="thead-dark text-center">
+                <tr>
+                    <th scope="col">STT</th>
+                    <th scope="col">Tên sách</th>
+                    <th scope="col">Tác giả</th>
+                    <th scope="col">Số lượng</th>
+                    <th scope="col">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php $stt = 1; ?>
+                <?php foreach ($books_to_borrow as $row): ?>
+                    <?php
+                        $quantity = $row['book_quantity'];
+                        if ($quantity > 5) {
+                            $rowClass = 'high-stock';
+                        } elseif ($quantity >= 2) {
+                            $rowClass = 'medium-stock';
+                        } else {
+                            $rowClass = 'low-stock';
+                        }
+                    ?>
+                    <tr class="<?php echo $rowClass; ?>">
+                        <td class="text-center font-weight-bold"><?php echo $stt++; ?></td>
+                        <td><div class="book-title"><?php echo htmlspecialchars($row['book_name']); ?></div></td>
+                        <td><div class="book-author"><?php echo htmlspecialchars($row['book_author']); ?></div></td>
+                        <td class="text-center">
+                            <span class="badge badge-info badge-pill quantity-badge"><?php echo $quantity; ?></span>
+                        </td>
+                        <td class="text-center">
+                            <form method="post" style="display: inline;" onsubmit="return confirmBorrow('<?php echo addslashes($row['book_name']); ?>')">
+                                <input type="hidden" name="book_id" value="<?php echo $row['book_id']; ?>">
+                                <button type="submit" name="borrow_book" class="btn btn-sm btn-borrow" title="Gửi yêu cầu mượn sách">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+<?php else: ?>
+    <p class="text-muted">Không có sách nào có sẵn để mượn.</p>
+<?php endif; ?>
+
+<script>
+    function confirmBorrow(bookName) {
+        return confirm("Bạn có chắc chắn muốn gửi yêu cầu mượn sách: " + bookName + " không?");
+    }
+</script>
+
 </body>
 </html>
